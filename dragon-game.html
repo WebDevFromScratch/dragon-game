@@ -33,7 +33,7 @@
             physics: {
                 default: 'arcade',
                 arcade: {
-                    gravity: { y: 600 },
+                    gravity: { y: 400 },
                     debug: false
                 }
             },
@@ -65,12 +65,14 @@
         let scoreText;
         let levelText;
         let gameOver = false;
+        let gameStarted = false;
         let obstacleTimer;
         let collectibleTimer;
         let speed = 200;
         let roughCanvas;
         let rc;
         let caveWallHitCooldown = false;
+        let instructions;
 
         // Helper function to create a canvas with Rough.js drawing
         function createRoughCanvas(width, height) {
@@ -456,19 +458,21 @@
             });
             pauseText.setOrigin(1, 0);
 
-            // Spawn obstacles and collectibles
+            // Spawn obstacles and collectibles (paused until game starts)
             obstacleTimer = this.time.addEvent({
-                delay: 2000,
+                delay: 2500,
                 callback: spawnObstacle,
                 callbackScope: this,
-                loop: true
+                loop: true,
+                paused: true
             });
 
             collectibleTimer = this.time.addEvent({
                 delay: 3500,
                 callback: spawnCollectible,
                 callbackScope: this,
-                loop: true
+                loop: true,
+                paused: true
             });
 
             // Collisions
@@ -476,8 +480,8 @@
             this.physics.add.overlap(dragon, collectibles, collectItem, null, this);
             this.physics.add.overlap(dragon, caveWalls, hitCaveWall, null, this);
 
-            // Instructions
-            const instructions = this.add.text(400, 300,
+            // Instructions (stays until game starts)
+            instructions = this.add.text(400, 300,
                 'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\n\nFly through the cave!\nAvoid walls and obstacles! Collect stars!\n\nPress SPACE to start!',
                 {
                     fontSize: '20px',
@@ -489,12 +493,26 @@
             );
             instructions.setOrigin(0.5);
 
-            this.time.delayedCall(3000, () => {
-                instructions.destroy();
-            });
+            // Pause physics until game starts
+            this.physics.pause();
         }
 
         function update() {
+            // Wait for player to start the game
+            if (!gameStarted && !gameOver) {
+                if (Phaser.Input.Keyboard.JustDown(flapKey) || Phaser.Input.Keyboard.JustDown(cursors.up)) {
+                    gameStarted = true;
+                    this.physics.resume();
+                    obstacleTimer.paused = false;
+                    collectibleTimer.paused = false;
+                    if (instructions) {
+                        instructions.destroy();
+                        instructions = null;
+                    }
+                }
+                return;
+            }
+
             if (gameOver) {
                 return;
             }
@@ -602,13 +620,36 @@
                 rightWing.y = 5 - Math.sin(time / 200) * 3;
             }
 
+            // Check if dragon has fallen out of bounds
+            if (dragon.y < 50 || dragon.y > 550) {
+                // Dragon is outside playable area
+                if (!caveWallHitCooldown) {
+                    caveWallHitCooldown = true;
+                    health--;
+                    updateHealth();
+                    this.cameras.main.flash(200, 255, 0, 0);
+                    this.cameras.main.shake(200, 0.01);
+
+                    this.time.delayedCall(500, () => {
+                        caveWallHitCooldown = false;
+                    });
+
+                    if (health <= 0) {
+                        endGame(this);
+                    }
+                }
+            }
+
             // Move obstacles and collectibles
             obstacles.children.entries.forEach(obstacle => {
                 obstacle.x -= speed * 0.016;
                 if (obstacle.x < -50) {
                     obstacle.destroy();
-                    score += 10;
-                    updateScore();
+                    // Only award points if dragon is in valid position
+                    if (dragon.y >= 50 && dragon.y <= 550) {
+                        score += 10;
+                        updateScore();
+                    }
                 }
             });
 
@@ -631,12 +672,12 @@
             const type = Phaser.Math.Between(0, 1);
             const yPos = Phaser.Math.Between(100, 500);
 
-            const obstacleCanvas = createRoughCanvas(50, 100);
+            const obstacleCanvas = createRoughCanvas(40, 70);
             const obstacleRc = obstacleCanvas.rc;
 
             if (type === 0) {
-                // Rock obstacle with sketchy detail
-                obstacleRc.rectangle(5, 20, 40, 80, {
+                // Rock obstacle with sketchy detail (smaller for easier gameplay)
+                obstacleRc.rectangle(5, 15, 30, 55, {
                     fill: hexToRgb(0x8B4513),
                     fillStyle: 'solid',
                     roughness: 2.5,
@@ -645,7 +686,7 @@
                     fillWeight: 2
                 });
 
-                obstacleRc.polygon([[5, 20], [25, -10], [45, 20]], {
+                obstacleRc.polygon([[5, 15], [20, -5], [35, 15]], {
                     fill: hexToRgb(0x654321),
                     fillStyle: 'hachure',
                     roughness: 2.5,
@@ -655,19 +696,19 @@
                 });
 
                 // Texture spots
-                obstacleRc.circle(15, 40, 5, {
+                obstacleRc.circle(12, 30, 4, {
                     fill: hexToRgb(0x5a3a1a),
                     fillStyle: 'solid',
                     roughness: 2.0
                 });
-                obstacleRc.circle(30, 70, 6, {
+                obstacleRc.circle(23, 50, 5, {
                     fill: hexToRgb(0x5a3a1a),
                     fillStyle: 'solid',
                     roughness: 2.0
                 });
             } else {
-                // Stalactite/stalagmite with sketchy texture
-                obstacleRc.polygon([[5, 20], [25, 80], [45, 20]], {
+                // Stalactite/stalagmite with sketchy texture (smaller)
+                obstacleRc.polygon([[5, 15], [20, 60], [35, 15]], {
                     fill: hexToRgb(0x696969),
                     fillStyle: 'solid',
                     roughness: 2.5,
@@ -676,7 +717,7 @@
                     fillWeight: 2
                 });
 
-                obstacleRc.polygon([[13, 30], [25, 70], [37, 30]], {
+                obstacleRc.polygon([[10, 22], [20, 52], [30, 22]], {
                     fill: hexToRgb(0x505050),
                     fillStyle: 'hachure',
                     roughness: 2.0,
@@ -690,7 +731,7 @@
             obstacle.setOrigin(0.5, 0.5);
 
             this.physics.add.existing(obstacle);
-            obstacle.body.setSize(40, 60);
+            obstacle.body.setSize(30, 45);
             obstacle.body.setAllowGravity(false);
             obstacle.body.setImmovable(true);
             obstacle.body.moves = false;
