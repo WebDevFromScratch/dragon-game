@@ -52,6 +52,7 @@
         let rightWing;
         let obstacles;
         let collectibles;
+        let caveWalls;
         let cursors;
         let flapKey;
         let duckKey;
@@ -69,6 +70,7 @@
         let speed = 200;
         let roughCanvas;
         let rc;
+        let caveWallHitCooldown = false;
 
         // Helper function to create a canvas with Rough.js drawing
         function createRoughCanvas(width, height) {
@@ -94,6 +96,89 @@
         }
 
         function create() {
+            // Create cave walls (top and bottom) for tunnel effect
+            caveWalls = this.physics.add.staticGroup();
+
+            // Top cave wall
+            const topWallCanvas = createRoughCanvas(800, 70);
+            const topWallRc = topWallCanvas.rc;
+
+            // Draw irregular rocky cave ceiling
+            const topWallPoints = [];
+            for (let x = 0; x <= 800; x += 40) {
+                const y = 50 + Math.random() * 20;
+                topWallPoints.push([x, y]);
+            }
+            topWallPoints.unshift([0, 0]);
+            topWallPoints.push([800, 0]);
+
+            topWallRc.polygon(topWallPoints, {
+                fill: hexToRgb(0x4a4a4a),
+                fillStyle: 'hachure',
+                roughness: 2.5,
+                strokeWidth: 3,
+                stroke: hexToRgb(0x2a2a2a),
+                hachureAngle: 45,
+                fillWeight: 3
+            });
+
+            // Add some rocky details
+            for (let i = 0; i < 8; i++) {
+                const x = i * 100 + 50;
+                const y = 40 + Math.random() * 15;
+                topWallRc.circle(x, y, 5 + Math.random() * 10, {
+                    fill: hexToRgb(0x3a3a3a),
+                    fillStyle: 'solid',
+                    roughness: 3.0
+                });
+            }
+
+            this.textures.addCanvas('topCaveWall', topWallCanvas.canvas);
+            const topWall = this.add.image(400, 35, 'topCaveWall');
+            topWall.setOrigin(0.5, 0.5);
+            caveWalls.add(topWall);
+            topWall.body.setSize(800, 70);
+
+            // Bottom cave wall
+            const bottomWallCanvas = createRoughCanvas(800, 70);
+            const bottomWallRc = bottomWallCanvas.rc;
+
+            // Draw irregular rocky cave floor
+            const bottomWallPoints = [];
+            for (let x = 0; x <= 800; x += 40) {
+                const y = 20 + Math.random() * 20;
+                bottomWallPoints.push([x, y]);
+            }
+            bottomWallPoints.push([800, 70]);
+            bottomWallPoints.unshift([0, 70]);
+
+            bottomWallRc.polygon(bottomWallPoints, {
+                fill: hexToRgb(0x4a4a4a),
+                fillStyle: 'hachure',
+                roughness: 2.5,
+                strokeWidth: 3,
+                stroke: hexToRgb(0x2a2a2a),
+                hachureAngle: -45,
+                fillWeight: 3
+            });
+
+            // Add some rocky details
+            for (let i = 0; i < 8; i++) {
+                const x = i * 100 + 50;
+                const y = 30 + Math.random() * 15;
+                bottomWallRc.circle(x, y, 5 + Math.random() * 10, {
+                    fill: hexToRgb(0x3a3a3a),
+                    fillStyle: 'solid',
+                    roughness: 3.0
+                });
+            }
+
+            this.textures.addCanvas('bottomCaveWall', bottomWallCanvas.canvas);
+            const bottomWall = this.add.image(400, 565, 'bottomCaveWall');
+            bottomWall.setOrigin(0.5, 0.5);
+            caveWalls.add(bottomWall);
+            bottomWall.body.setSize(800, 70);
+
             // Create dragon container
             dragon = this.add.container(150, 300);
 
@@ -329,7 +414,6 @@
             this.physics.add.existing(dragon);
             dragon.body.setSize(80, 60);
             dragon.body.setOffset(-40, -30);
-            dragon.body.setCollideWorldBounds(true);
             dragon.body.setBounce(0.2);
 
             // Create groups for obstacles and collectibles
@@ -390,10 +474,11 @@
             // Collisions
             this.physics.add.overlap(dragon, obstacles, hitObstacle, null, this);
             this.physics.add.overlap(dragon, collectibles, collectItem, null, this);
+            this.physics.add.overlap(dragon, caveWalls, hitCaveWall, null, this);
 
             // Instructions
             const instructions = this.add.text(400, 300,
-                'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\n\nAvoid obstacles! Collect stars!\n\nPress SPACE to start!',
+                'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\n\nFly through the cave!\nAvoid walls and obstacles! Collect stars!\n\nPress SPACE to start!',
                 {
                     fontSize: '20px',
                     fill: '#fff',
@@ -677,6 +762,31 @@
 
             // Flash red
             this.cameras.main.flash(200, 255, 0, 0);
+
+            if (health <= 0) {
+                endGame(this);
+            }
+        }
+
+        function hitCaveWall(dragon, wall) {
+            // Don't destroy wall (it's permanent)
+            // Use cooldown to prevent rapid repeated damage
+            if (caveWallHitCooldown) return;
+
+            caveWallHitCooldown = true;
+            health--;
+            updateHealth();
+
+            // Flash red
+            this.cameras.main.flash(200, 255, 0, 0);
+
+            // Camera shake for impact
+            this.cameras.main.shake(200, 0.01);
+
+            // Reset cooldown after half a second
+            this.time.delayedCall(500, () => {
+                caveWallHitCooldown = false;
+            });
 
             if (health <= 0) {
                 endGame(this);
