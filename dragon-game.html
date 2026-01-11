@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragon Flight Adventure</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 600 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+
+        let dragon;
+        let dragonBody;
+        let leftWing;
+        let rightWing;
+        let obstacles;
+        let collectibles;
+        let cursors;
+        let flapKey;
+        let duckKey;
+        let pauseKey;
+        let isPaused = false;
+        let health = 5;
+        let score = 0;
+        let level = 1;
+        let healthText;
+        let scoreText;
+        let levelText;
+        let gameOver = false;
+        let obstacleTimer;
+        let collectibleTimer;
+        let speed = 200;
+
+        function preload() {
+            // We'll create the dragon using graphics in the create function
+        }
+
+        function create() {
+            // Create dragon container
+            dragon = this.add.container(150, 300);
+
+            // Create dragon body (detailed SVG-style)
+            dragonBody = this.add.graphics();
+
+            // Main body - gradient effect with multiple circles
+            dragonBody.fillStyle(0x2d8a4d, 1);
+            dragonBody.fillEllipse(0, 0, 50, 35);
+
+            // Belly highlight
+            dragonBody.fillStyle(0x90EE90, 1);
+            dragonBody.fillEllipse(0, 5, 35, 20);
+
+            // Head
+            dragonBody.fillStyle(0x2d8a4d, 1);
+            dragonBody.fillEllipse(30, -8, 35, 30);
+
+            // Snout
+            dragonBody.fillStyle(0x90EE90, 1);
+            dragonBody.fillEllipse(45, -5, 20, 15);
+
+            // Nostrils
+            dragonBody.fillStyle(0x1a5c2e, 1);
+            dragonBody.fillCircle(50, -8, 2);
+            dragonBody.fillCircle(50, -2, 2);
+
+            // Eye
+            dragonBody.fillStyle(0xFFFFFF, 1);
+            dragonBody.fillCircle(35, -12, 6);
+            dragonBody.fillStyle(0x000000, 1);
+            dragonBody.fillCircle(37, -12, 3);
+
+            // Eye shine
+            dragonBody.fillStyle(0xFFFFFF, 1);
+            dragonBody.fillCircle(38, -13, 1.5);
+
+            // Horns
+            dragonBody.fillStyle(0xffd700, 1);
+            dragonBody.fillTriangle(28, -20, 25, -28, 22, -20);
+            dragonBody.fillTriangle(35, -22, 33, -30, 31, -22);
+
+            // Spikes along back
+            dragonBody.fillStyle(0xffd700, 1);
+            for (let i = 0; i < 4; i++) {
+                const x = 10 - i * 8;
+                dragonBody.fillTriangle(x, -15, x-3, -22, x-6, -15);
+            }
+
+            // Tail
+            dragonBody.fillStyle(0x2d8a4d, 1);
+            dragonBody.fillEllipse(-25, 0, 25, 15);
+            dragonBody.fillEllipse(-40, -3, 20, 12);
+            dragonBody.fillTriangle(-45, -3, -55, -8, -55, 2);
+
+            // Tail tip decoration
+            dragonBody.fillStyle(0xff4444, 1);
+            dragonBody.fillTriangle(-52, -8, -58, -10, -58, -6);
+            dragonBody.fillTriangle(-52, 2, -58, 0, -58, 4);
+
+            // Left wing
+            leftWing = this.add.graphics();
+            leftWing.fillStyle(0x228b44, 0.8);
+            leftWing.beginPath();
+            leftWing.moveTo(0, 0);
+            leftWing.lineTo(-15, -25);
+            leftWing.lineTo(-35, -35);
+            leftWing.lineTo(-45, -30);
+            leftWing.lineTo(-40, -15);
+            leftWing.lineTo(-25, -5);
+            leftWing.closePath();
+            leftWing.fillPath();
+
+            // Wing membrane lines
+            leftWing.lineStyle(2, 0x1a5c2e, 0.6);
+            leftWing.beginPath();
+            leftWing.moveTo(-5, -5);
+            leftWing.lineTo(-20, -30);
+            leftWing.stroke();
+            leftWing.beginPath();
+            leftWing.moveTo(-15, -8);
+            leftWing.lineTo(-30, -32);
+            leftWing.stroke();
+
+            leftWing.x = -5;
+            leftWing.y = -5;
+
+            // Right wing
+            rightWing = this.add.graphics();
+            rightWing.fillStyle(0x228b44, 0.8);
+            rightWing.beginPath();
+            rightWing.moveTo(0, 0);
+            rightWing.lineTo(-15, 25);
+            rightWing.lineTo(-35, 35);
+            rightWing.lineTo(-45, 30);
+            rightWing.lineTo(-40, 15);
+            rightWing.lineTo(-25, 5);
+            rightWing.closePath();
+            rightWing.fillPath();
+
+            // Wing membrane lines
+            rightWing.lineStyle(2, 0x1a5c2e, 0.6);
+            rightWing.beginPath();
+            rightWing.moveTo(-5, 5);
+            rightWing.lineTo(-20, 30);
+            rightWing.stroke();
+            rightWing.beginPath();
+            rightWing.moveTo(-15, 8);
+            rightWing.lineTo(-30, 32);
+            rightWing.stroke();
+
+            rightWing.x = -5;
+            rightWing.y = 5;
+
+            // Add all parts to container
+            dragon.add([leftWing, rightWing, dragonBody]);
+
+            // Add physics to dragon container
+            this.physics.add.existing(dragon);
+            dragon.body.setSize(80, 60);
+            dragon.body.setOffset(-40, -30);
+            dragon.body.setCollideWorldBounds(true);
+            dragon.body.setBounce(0.2);
+
+            // Create groups for obstacles and collectibles
+            obstacles = this.physics.add.group();
+            collectibles = this.physics.add.group();
+
+            // Input
+            cursors = this.input.keyboard.createCursorKeys();
+            flapKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+            duckKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+            pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
+            // UI Text
+            healthText = this.add.text(16, 16, 'Health: ❤️❤️❤️❤️❤️', {
+                fontSize: '24px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+
+            scoreText = this.add.text(16, 50, 'Score: 0', {
+                fontSize: '24px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+
+            levelText = this.add.text(16, 84, 'Level: 1', {
+                fontSize: '24px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+
+            const pauseText = this.add.text(750, 16, 'P = Pause', {
+                fontSize: '20px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 3
+            });
+            pauseText.setOrigin(1, 0);
+
+            // Spawn obstacles and collectibles
+            obstacleTimer = this.time.addEvent({
+                delay: 2000,
+                callback: spawnObstacle,
+                callbackScope: this,
+                loop: true
+            });
+
+            collectibleTimer = this.time.addEvent({
+                delay: 3500,
+                callback: spawnCollectible,
+                callbackScope: this,
+                loop: true
+            });
+
+            // Collisions
+            this.physics.add.overlap(dragon, obstacles, hitObstacle, null, this);
+            this.physics.add.overlap(dragon, collectibles, collectItem, null, this);
+
+            // Instructions
+            const instructions = this.add.text(400, 300,
+                'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\n\nAvoid obstacles! Collect stars!\n\nPress SPACE to start!',
+                {
+                    fontSize: '20px',
+                    fill: '#fff',
+                    stroke: '#000',
+                    strokeThickness: 4,
+                    align: 'center'
+                }
+            );
+            instructions.setOrigin(0.5);
+
+            this.time.delayedCall(3000, () => {
+                instructions.destroy();
+            });
+        }
+
+        function update() {
+            if (gameOver) {
+                return;
+            }
+
+            // Toggle pause
+            if (Phaser.Input.Keyboard.JustDown(pauseKey)) {
+                isPaused = !isPaused;
+                if (isPaused) {
+                    this.physics.pause();
+                    obstacleTimer.paused = true;
+                    collectibleTimer.paused = true;
+
+                    const pauseMsg = this.add.text(400, 300, 'PAUSED\nPress P to resume', {
+                        fontSize: '48px',
+                        fill: '#fff',
+                        stroke: '#000',
+                        strokeThickness: 6,
+                        align: 'center'
+                    });
+                    pauseMsg.setOrigin(0.5);
+                    pauseMsg.setName('pauseMessage');
+                } else {
+                    this.physics.resume();
+                    obstacleTimer.paused = false;
+                    collectibleTimer.paused = false;
+
+                    const pauseMsg = this.children.getByName('pauseMessage');
+                    if (pauseMsg) pauseMsg.destroy();
+                }
+            }
+
+            if (isPaused) {
+                return;
+            }
+
+            // Flap wings (go up)
+            if (Phaser.Input.Keyboard.JustDown(flapKey) || Phaser.Input.Keyboard.JustDown(cursors.up)) {
+                dragon.body.setVelocityY(-300);
+
+                // Wing flap animation
+                this.tweens.add({
+                    targets: leftWing,
+                    y: -25,
+                    duration: 100,
+                    yoyo: true
+                });
+                this.tweens.add({
+                    targets: rightWing,
+                    y: 25,
+                    duration: 100,
+                    yoyo: true
+                });
+
+                // Body tilt
+                this.tweens.add({
+                    targets: dragon,
+                    angle: -15,
+                    duration: 100,
+                    yoyo: true
+                });
+            }
+
+            // Duck (go down faster)
+            if (cursors.down.isDown || duckKey.isDown) {
+                dragon.body.setVelocityY(400);
+
+                // Fold wings animation
+                if (!leftWing.getData('folded')) {
+                    this.tweens.add({
+                        targets: leftWing,
+                        scaleY: 0.5,
+                        duration: 150
+                    });
+                    this.tweens.add({
+                        targets: rightWing,
+                        scaleY: 0.5,
+                        duration: 150
+                    });
+                    leftWing.setData('folded', true);
+                }
+
+                // Body tilt down
+                dragon.angle = 15;
+            } else {
+                // Unfold wings
+                if (leftWing.getData('folded')) {
+                    this.tweens.add({
+                        targets: [leftWing, rightWing],
+                        scaleY: 1,
+                        duration: 150
+                    });
+                    leftWing.setData('folded', false);
+                }
+
+                // Reset body angle
+                if (dragon.angle > 0) {
+                    dragon.angle = Math.max(0, dragon.angle - 1);
+                }
+            }
+
+            // Idle wing movement
+            if (!Phaser.Input.Keyboard.JustDown(flapKey) && !cursors.down.isDown) {
+                const time = this.time.now;
+                leftWing.y = -5 + Math.sin(time / 200) * 3;
+                rightWing.y = 5 - Math.sin(time / 200) * 3;
+            }
+
+            // Move obstacles and collectibles
+            obstacles.children.entries.forEach(obstacle => {
+                obstacle.x -= speed * 0.016;
+                if (obstacle.x < -50) {
+                    obstacle.destroy();
+                    score += 10;
+                    updateScore();
+                }
+            });
+
+            collectibles.children.entries.forEach(collectible => {
+                collectible.x -= speed * 0.016;
+                if (collectible.x < -50) {
+                    collectible.destroy();
+                }
+            });
+
+            // Level progression
+            if (score > 0 && score % 100 === 0 && score > (level - 1) * 100) {
+                levelUp(this);
+            }
+        }
+
+        function spawnObstacle() {
+            if (gameOver) return;
+
+            const obstacle = this.add.graphics();
+            const type = Phaser.Math.Between(0, 1);
+            const yPos = Phaser.Math.Between(100, 500);
+
+            if (type === 0) {
+                // Rock obstacle with more detail
+                obstacle.fillStyle(0x8B4513, 1);
+                obstacle.fillRect(0, 0, 40, 80);
+                obstacle.fillStyle(0x654321, 1);
+                obstacle.fillTriangle(0, 0, 20, -30, 40, 0);
+                obstacle.fillStyle(0x5a3a1a, 1);
+                obstacle.fillCircle(10, 20, 5);
+                obstacle.fillCircle(25, 50, 6);
+            } else {
+                // Stalactite/stalagmite with texture
+                obstacle.fillStyle(0x696969, 1);
+                obstacle.fillTriangle(0, 0, 20, 60, 40, 0);
+                obstacle.fillStyle(0x505050, 1);
+                obstacle.fillTriangle(8, 10, 20, 50, 32, 10);
+            }
+
+            obstacle.x = 850;
+            obstacle.y = yPos;
+
+            this.physics.add.existing(obstacle);
+            obstacle.body.setSize(40, 60);
+            obstacle.body.setAllowGravity(false);
+            obstacle.body.setImmovable(true);
+            obstacle.body.moves = false;
+
+            obstacles.add(obstacle);
+        }
+
+        function spawnCollectible() {
+            if (gameOver) return;
+
+            const collectible = this.add.graphics();
+            const yPos = Phaser.Math.Between(100, 500);
+
+            // Draw a star manually
+            collectible.fillStyle(0xFFD700, 1);
+            collectible.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                const x = Math.cos(angle) * 15;
+                const y = Math.sin(angle) * 15;
+                if (i === 0) {
+                    collectible.moveTo(x, y);
+                } else {
+                    collectible.lineTo(x, y);
+                }
+            }
+            collectible.closePath();
+            collectible.fillPath();
+
+            // Add glow effect
+            collectible.lineStyle(3, 0xFFFF00, 0.5);
+            collectible.strokeCircle(0, 0, 18);
+
+            collectible.x = 850;
+            collectible.y = yPos;
+
+            this.physics.add.existing(collectible);
+            collectible.body.setCircle(15);
+            collectible.body.setAllowGravity(false);
+            collectible.body.moves = false;
+
+            collectibles.add(collectible);
+
+            // Sparkle animation
+            this.tweens.add({
+                targets: collectible,
+                scaleX: 1.3,
+                scaleY: 1.3,
+                duration: 500,
+                yoyo: true,
+                repeat: -1
+            });
+        }
+
+        function hitObstacle(dragon, obstacle) {
+            obstacle.destroy();
+            health--;
+            updateHealth();
+
+            // Flash red
+            this.cameras.main.flash(200, 255, 0, 0);
+
+            if (health <= 0) {
+                endGame(this);
+            }
+        }
+
+        function collectItem(dragon, collectible) {
+            collectible.destroy();
+            health = Math.min(5, health + 1);
+            score += 20;
+            updateHealth();
+            updateScore();
+
+            // Flash green
+            this.cameras.main.flash(200, 0, 255, 0);
+        }
+
+        function updateHealth() {
+            const hearts = '❤️'.repeat(health);
+            healthText.setText('Health: ' + hearts);
+        }
+
+        function updateScore() {
+            scoreText.setText('Score: ' + score);
+        }
+
+        function levelUp(scene) {
+            level++;
+            levelText.setText('Level: ' + level);
+            speed += 30;
+
+            // Show level up message
+            const levelUpText = scene.add.text(400, 300, 'LEVEL UP!', {
+                fontSize: '48px',
+                fill: '#FFD700',
+                stroke: '#000',
+                strokeThickness: 6
+            });
+            levelUpText.setOrigin(0.5);
+
+            scene.tweens.add({
+                targets: levelUpText,
+                scaleX: 1.5,
+                scaleY: 1.5,
+                alpha: 0,
+                duration: 1500,
+                onComplete: () => levelUpText.destroy()
+            });
+
+            // Spawn obstacles faster
+            obstacleTimer.delay = Math.max(800, 2000 - (level * 200));
+        }
+
+        function endGame(scene) {
+            gameOver = true;
+
+            scene.physics.pause();
+
+            // Change dragon to defeated colors
+            dragonBody.clear();
+            dragonBody.fillStyle(0x8B0000, 1);
+            dragonBody.fillEllipse(0, 0, 50, 35);
+            dragonBody.fillStyle(0xFF6B6B, 1);
+            dragonBody.fillEllipse(0, 5, 35, 20);
+            dragonBody.fillStyle(0x8B0000, 1);
+            dragonBody.fillEllipse(30, -8, 35, 30);
+
+            const gameOverText = scene.add.text(400, 250, 'GAME OVER!', {
+                fontSize: '64px',
+                fill: '#ff0000',
+                stroke: '#000',
+                strokeThickness: 8
+            });
+            gameOverText.setOrigin(0.5);
+
+            const finalScore = scene.add.text(400, 330, `Final Score: ${score}`, {
+                fontSize: '32px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+            finalScore.setOrigin(0.5);
+
+            const restartText = scene.add.text(400, 400, 'Refresh page to play again!', {
+                fontSize: '24px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+            restartText.setOrigin(0.5);
+        }
+    </script>
+</body>
+</html>
