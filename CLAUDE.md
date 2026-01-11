@@ -16,27 +16,30 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 - Progressive difficulty - speed increases every 100 points
 
 ### Visual Design
-- Detailed green dragon with:
+- **Hand-drawn aesthetic using Rough.js library**
+- Detailed green dragon with sketchy, organic lines:
   - Separate body, wings, head, tail, horns, spikes
   - Animated wings (flap on key press, idle gentle wave motion)
   - Body tilts up when flapping, down when ducking
   - Wings fold when ducking
   - Eye with pupil and shine
-  - Golden decorative elements
-- Random obstacles (rocks, stalactites)
-- Collectible golden stars with glow effect
+  - Golden decorative elements with rough edges
+- Random obstacles (rocks, stalactites) with hand-drawn textures
+- Collectible golden stars with sketchy glow effect
 - UI shows health hearts, score, level, pause hint
 
 ### Technical Details
-- Single HTML file (Phaser 3.55.2 from CDN)
-- Dragon is a Phaser Container with multiple Graphics objects
+- Single HTML file (Phaser 3.55.2 + Rough.js 4.5.2 from CDN)
+- Dragon is a Phaser Container with Rough.js-generated textures
+- Graphics drawn to offscreen canvas, converted to Phaser textures
 - Physics: Arcade physics with gravity
 - Obstacles/collectibles spawn at random Y positions, scroll left
+- Roughness values: 1.5-2.5 for authentic sketchy feel
+- Hachure and solid fill styles for texture variety
 - No localStorage (not supported in Claude.ai artifacts)
 - All game state in memory
 
 ## Known Issues/Limitations
-- Graphics are drawn with Phaser Graphics API (not image sprites)
 - No fire breathing yet
 - Obstacle variety is limited
 - No level-specific designs (random generation only)
