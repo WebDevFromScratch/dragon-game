@@ -16,7 +16,15 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 - Progressive difficulty - speed increases every 100 points
 
 ### Visual Design
-- **Hand-drawn aesthetic using Rough.js library**
+- **Mixed art style:**
+  - Animated sprite-based dragon (cute cartoon style)
+  - Hand-drawn cave environment using Rough.js library
+- **Dragon:**
+  - 6-frame sprite animation with wing flapping
+  - Green body with orange wings and golden horns
+  - Smooth frame-based animation (10 fps when flapping, 6 fps idle)
+  - Body tilts up when flapping, down when ducking
+  - Red tint applied when defeated
 - **Scrolling cave tunnel environment:**
   - Rocky cave walls at top and bottom with irregular edges
   - Walls scroll horizontally creating sense of forward movement
@@ -24,21 +32,14 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
   - Hachure-filled textures for depth and hand-drawn feel
   - Creates confined tunnel preventing edge camping
   - Infinite tunnel effect with seamless segment wrapping
-- Detailed green dragon with sketchy, organic lines:
-  - Separate body, wings, head, tail, horns, spikes
-  - Animated wings (flap on key press, idle gentle wave motion)
-  - Body tilts up when flapping, down when ducking
-  - Wings fold when ducking
-  - Eye with pupil and shine
-  - Golden decorative elements with rough edges
-- Random obstacles (rocks, stalactites) spawning in tunnel
+- Random obstacles (rocks, stalactites) with hand-drawn textures
 - Collectible golden stars with sketchy glow effect
 - UI shows health hearts, score, level, pause hint
 
 ### Technical Details
 - Single HTML file (Phaser 3.55.2 + Rough.js 4.5.2 from CDN)
-- Dragon is a Phaser Container with Rough.js-generated textures
-- Graphics drawn to offscreen canvas, converted to Phaser textures
+- Dragon: Animated sprite from dragon_sprites.png (6 frames, 100x100px each)
+- Environment graphics drawn to offscreen canvas via Rough.js, converted to textures
 - Physics: Arcade physics with reduced gravity (400) for easier control
 - Scrolling cave walls with 3 segments each (top/bottom) for infinite tunnel
 - Physics-based collision detection with cave walls (500ms damage cooldown)
@@ -69,4 +70,6 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 8. Power-ups beyond health stars
 
 ## File Structure
-Currently: Single `dragon-game.html` file containing all HTML, CSS, JavaScript, and game logic.
+- `dragon-game.html` - Main game file with all HTML, CSS, JavaScript, and game logic
+- `dragon_sprites.png` - Dragon sprite sheet (6 frames for wing animation)
+- `CLAUDE.md` - This documentation file
