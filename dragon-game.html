@@ -47,9 +47,6 @@
         const game = new Phaser.Game(config);
 
         let dragon;
-        let dragonBody;
-        let leftWing;
-        let rightWing;
         let obstacles;
         let collectibles;
         let caveWalls;
@@ -96,7 +93,11 @@
         }
 
         function preload() {
-            // We'll create the dragon using Rough.js in the create function
+            // Load dragon sprite sheet
+            this.load.spritesheet('dragon', 'dragon_sprites.png', {
+                frameWidth: 100,
+                frameHeight: 100
+            });
         }
 
         function createWallTexture(isTop) {
@@ -175,241 +176,33 @@
                 caveWalls.add(bottomWall);
             }
 
-            // Create dragon container
-            dragon = this.add.container(150, 300);
+            // Create dragon sprite with animation
+            dragon = this.add.sprite(150, 300, 'dragon', 0);
+            dragon.setScale(1.0);
 
-            // Create dragon body with Rough.js (hand-drawn style)
-            const bodyCanvas = createRoughCanvas(150, 80);
-            const bodyRc = bodyCanvas.rc;
-
-            // Main body - sketchy ellipse
-            bodyRc.ellipse(75, 40, 50, 35, {
-                fill: hexToRgb(0x2d8a4d),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e)
+            // Create flying animation from sprite sheet
+            this.anims.create({
+                key: 'fly',
+                frames: this.anims.generateFrameNumbers('dragon', { start: 0, end: 5 }),
+                frameRate: 10,
+                repeat: -1
             });
 
-            // Belly highlight
-            bodyRc.ellipse(75, 45, 35, 20, {
-                fill: hexToRgb(0x90EE90),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 1,
-                stroke: hexToRgb(0x70d070)
+            // Create idle animation (slower)
+            this.anims.create({
+                key: 'idle',
+                frames: this.anims.generateFrameNumbers('dragon', { start: 0, end: 5 }),
+                frameRate: 6,
+                repeat: -1
             });
 
-            // Head
-            bodyRc.ellipse(105, 32, 35, 30, {
-                fill: hexToRgb(0x2d8a4d),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e)
-            });
+            // Start with idle animation
+            dragon.play('idle');
 
-            // Snout
-            bodyRc.ellipse(120, 35, 20, 15, {
-                fill: hexToRgb(0x90EE90),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x70d070)
-            });
-
-            // Nostrils
-            bodyRc.circle(125, 32, 3, {
-                fill: hexToRgb(0x1a5c2e),
-                fillStyle: 'solid',
-                roughness: 1.2
-            });
-            bodyRc.circle(125, 38, 3, {
-                fill: hexToRgb(0x1a5c2e),
-                fillStyle: 'solid',
-                roughness: 1.2
-            });
-
-            // Eye
-            bodyRc.circle(110, 28, 6, {
-                fill: 'rgb(255, 255, 255)',
-                fillStyle: 'solid',
-                roughness: 1.0,
-                strokeWidth: 2,
-                stroke: 'rgb(0, 0, 0)'
-            });
-            bodyRc.circle(112, 28, 3, {
-                fill: 'rgb(0, 0, 0)',
-                fillStyle: 'solid',
-                roughness: 0.8
-            });
-
-            // Eye shine
-            bodyRc.circle(113, 27, 1.5, {
-                fill: 'rgb(255, 255, 255)',
-                fillStyle: 'solid',
-                roughness: 0.5
-            });
-
-            // Horns
-            bodyRc.polygon([[103, 20], [100, 12], [97, 20]], {
-                fill: hexToRgb(0xffd700),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0xdaa520)
-            });
-            bodyRc.polygon([[110, 18], [108, 10], [106, 18]], {
-                fill: hexToRgb(0xffd700),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0xdaa520)
-            });
-
-            // Spikes along back
-            for (let i = 0; i < 4; i++) {
-                const x = 85 - i * 8;
-                bodyRc.polygon([[x, 25], [x-3, 18], [x-6, 25]], {
-                    fill: hexToRgb(0xffd700),
-                    fillStyle: 'solid',
-                    roughness: 1.5,
-                    strokeWidth: 1.5,
-                    stroke: hexToRgb(0xdaa520)
-                });
-            }
-
-            // Tail
-            bodyRc.ellipse(50, 40, 25, 15, {
-                fill: hexToRgb(0x2d8a4d),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e)
-            });
-            bodyRc.ellipse(35, 37, 20, 12, {
-                fill: hexToRgb(0x2d8a4d),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e)
-            });
-            bodyRc.polygon([[30, 37], [20, 32], [20, 42]], {
-                fill: hexToRgb(0x2d8a4d),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e)
-            });
-
-            // Tail tip decoration
-            bodyRc.polygon([[23, 32], [17, 30], [17, 34]], {
-                fill: hexToRgb(0xff4444),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 1.5,
-                stroke: hexToRgb(0xcc0000)
-            });
-            bodyRc.polygon([[23, 42], [17, 40], [17, 44]], {
-                fill: hexToRgb(0xff4444),
-                fillStyle: 'solid',
-                roughness: 1.5,
-                strokeWidth: 1.5,
-                stroke: hexToRgb(0xcc0000)
-            });
-
-            // Create Phaser image from canvas
-            this.textures.addCanvas('dragonBody', bodyCanvas.canvas);
-            dragonBody = this.add.image(0, 0, 'dragonBody');
-            dragonBody.setOrigin(0.5, 0.5);
-
-            // Left wing with Rough.js
-            const leftWingCanvas = createRoughCanvas(60, 50);
-            const leftWingRc = leftWingCanvas.rc;
-
-            // Wing shape
-            leftWingRc.polygon([
-                [15, 15],
-                [0, -10],
-                [-20, -20],
-                [-30, -15],
-                [-25, 0],
-                [-10, 10]
-            ], {
-                fill: hexToRgb(0x228b44),
-                fillStyle: 'solid',
-                roughness: 2.0,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e),
-                fillWeight: 3
-            });
-
-            // Wing membrane lines
-            leftWingRc.line(10, 10, -5, -15, {
-                stroke: hexToRgb(0x1a5c2e),
-                strokeWidth: 2,
-                roughness: 2.0
-            });
-            leftWingRc.line(0, 7, -15, -17, {
-                stroke: hexToRgb(0x1a5c2e),
-                strokeWidth: 2,
-                roughness: 2.0
-            });
-
-            this.textures.addCanvas('leftWing', leftWingCanvas.canvas);
-            leftWing = this.add.image(0, 0, 'leftWing');
-            leftWing.setOrigin(0.5, 0.5);
-            leftWing.setAlpha(0.9);
-            leftWing.x = -5;
-            leftWing.y = -5;
-
-            // Right wing with Rough.js
-            const rightWingCanvas = createRoughCanvas(60, 50);
-            const rightWingRc = rightWingCanvas.rc;
-
-            // Wing shape
-            rightWingRc.polygon([
-                [15, 35],
-                [0, 60],
-                [-20, 70],
-                [-30, 65],
-                [-25, 50],
-                [-10, 40]
-            ], {
-                fill: hexToRgb(0x228b44),
-                fillStyle: 'solid',
-                roughness: 2.0,
-                strokeWidth: 2,
-                stroke: hexToRgb(0x1a5c2e),
-                fillWeight: 3
-            });
-
-            // Wing membrane lines
-            rightWingRc.line(10, 40, -5, 65, {
-                stroke: hexToRgb(0x1a5c2e),
-                strokeWidth: 2,
-                roughness: 2.0
-            });
-            rightWingRc.line(0, 43, -15, 67, {
-                stroke: hexToRgb(0x1a5c2e),
-                strokeWidth: 2,
-                roughness: 2.0
-            });
-
-            this.textures.addCanvas('rightWing', rightWingCanvas.canvas);
-            rightWing = this.add.image(0, 0, 'rightWing');
-            rightWing.setOrigin(0.5, 0.5);
-            rightWing.setAlpha(0.9);
-            rightWing.x = -5;
-            rightWing.y = 5;
-
-            // Add all parts to container
-            dragon.add([leftWing, rightWing, dragonBody]);
-
-            // Add physics to dragon container
+            // Add physics to dragon sprite
             this.physics.add.existing(dragon);
             dragon.body.setSize(80, 60);
-            dragon.body.setOffset(-40, -30);
+            dragon.body.setOffset(10, 20);
             dragon.body.setBounce(0.2);
 
             // Create groups for obstacles and collectibles
@@ -546,21 +339,12 @@
             if (Phaser.Input.Keyboard.JustDown(flapKey) || Phaser.Input.Keyboard.JustDown(cursors.up)) {
                 dragon.body.setVelocityY(-300);
 
-                // Wing flap animation
-                this.tweens.add({
-                    targets: leftWing,
-                    y: -25,
-                    duration: 100,
-                    yoyo: true
-                });
-                this.tweens.add({
-                    targets: rightWing,
-                    y: 25,
-                    duration: 100,
-                    yoyo: true
-                });
+                // Switch to fast flapping animation
+                if (dragon.anims.currentAnim.key !== 'fly') {
+                    dragon.play('fly');
+                }
 
-                // Body tilt
+                // Body tilt up
                 this.tweens.add({
                     targets: dragon,
                     angle: -15,
@@ -573,45 +357,25 @@
             if (cursors.down.isDown || duckKey.isDown) {
                 dragon.body.setVelocityY(400);
 
-                // Fold wings animation
-                if (!leftWing.getData('folded')) {
-                    this.tweens.add({
-                        targets: leftWing,
-                        scaleY: 0.5,
-                        duration: 150
-                    });
-                    this.tweens.add({
-                        targets: rightWing,
-                        scaleY: 0.5,
-                        duration: 150
-                    });
-                    leftWing.setData('folded', true);
+                // Slower animation when ducking
+                if (dragon.anims.currentAnim.key !== 'idle') {
+                    dragon.play('idle');
                 }
 
                 // Body tilt down
                 dragon.angle = 15;
             } else {
-                // Unfold wings
-                if (leftWing.getData('folded')) {
-                    this.tweens.add({
-                        targets: [leftWing, rightWing],
-                        scaleY: 1,
-                        duration: 150
-                    });
-                    leftWing.setData('folded', false);
-                }
-
                 // Reset body angle
                 if (dragon.angle > 0) {
                     dragon.angle = Math.max(0, dragon.angle - 1);
+                } else if (dragon.angle < 0) {
+                    dragon.angle = Math.min(0, dragon.angle + 1);
                 }
-            }
 
-            // Idle wing movement
-            if (!Phaser.Input.Keyboard.JustDown(flapKey) && !cursors.down.isDown) {
-                const time = this.time.now;
-                leftWing.y = -5 + Math.sin(time / 200) * 3;
-                rightWing.y = 5 - Math.sin(time / 200) * 3;
+                // Use idle animation when not pressing keys
+                if (!Phaser.Input.Keyboard.JustDown(flapKey) && dragon.anims.currentAnim.key !== 'idle') {
+                    dragon.play('idle');
+                }
             }
 
             // Scroll cave walls for tunnel effect
@@ -881,9 +645,8 @@
             scene.physics.pause();
 
             // Change dragon to defeated colors - red tint
-            dragonBody.setTint(0x8B0000);
-            leftWing.setTint(0x8B0000);
-            rightWing.setTint(0x8B0000);
+            dragon.setTint(0x8B0000);
+            dragon.stop(); // Stop animation
 
             const gameOverText = scene.add.text(400, 250, 'GAME OVER!', {
                 fontSize: '64px',
