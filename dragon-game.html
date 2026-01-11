@@ -93,10 +93,10 @@
         }
 
         function preload() {
-            // Load dragon sprite sheet
+            // Load dragon sprite sheet (3 columns x 2 rows = 6 frames)
             this.load.spritesheet('dragon', 'dragon_sprites.png', {
-                frameWidth: 100,
-                frameHeight: 100
+                frameWidth: 512,
+                frameHeight: 512
             });
         }
 
@@ -178,7 +178,7 @@
 
             // Create dragon sprite with animation
             dragon = this.add.sprite(150, 300, 'dragon', 0);
-            dragon.setScale(1.0);
+            dragon.setScale(0.15); // Scale down from 512x512 to ~77px
 
             // Create flying animation from sprite sheet
             this.anims.create({
@@ -201,8 +201,8 @@
 
             // Add physics to dragon sprite
             this.physics.add.existing(dragon);
-            dragon.body.setSize(80, 60);
-            dragon.body.setOffset(10, 20);
+            dragon.body.setSize(60, 50); // Adjusted for sprite
+            dragon.body.setOffset(6, 12); // Center the hitbox on dragon body
             dragon.body.setBounce(0.2);
 
             // Create groups for obstacles and collectibles
@@ -401,9 +401,9 @@
                 if (obstacle.x < -50) {
                     obstacle.destroy();
                     // Only award points if dragon is in valid position (accounting for hitbox)
-                    // Dragon hitbox is 60px tall (±30 from center), walls end at 70 (top) and start at 530 (bottom)
-                    const dragonTop = dragon.y - 30;
-                    const dragonBottom = dragon.y + 30;
+                    // Dragon hitbox is 50px tall (±25 from center), walls end at 70 (top) and start at 530 (bottom)
+                    const dragonTop = dragon.y - 25;
+                    const dragonBottom = dragon.y + 25;
                     if (dragonTop > 70 && dragonBottom < 530) {
                         score += 10;
                         updateScore();
