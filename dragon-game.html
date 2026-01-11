@@ -53,6 +53,8 @@
         let obstacles;
         let collectibles;
         let caveWalls;
+        let topWallSegments = [];
+        let bottomWallSegments = [];
         let cursors;
         let flapKey;
         let duckKey;
@@ -97,89 +99,79 @@
             // We'll create the dragon using Rough.js in the create function
         }
 
+        function createWallTexture(isTop) {
+            const wallCanvas = createRoughCanvas(800, 70);
+            const wallRc = wallCanvas.rc;
+
+            // Draw irregular rocky cave wall
+            const wallPoints = [];
+            for (let x = 0; x <= 800; x += 40) {
+                const y = isTop ? (50 + Math.random() * 20) : (20 + Math.random() * 20);
+                wallPoints.push([x, y]);
+            }
+
+            if (isTop) {
+                wallPoints.unshift([0, 0]);
+                wallPoints.push([800, 0]);
+            } else {
+                wallPoints.push([800, 70]);
+                wallPoints.unshift([0, 70]);
+            }
+
+            wallRc.polygon(wallPoints, {
+                fill: hexToRgb(0x4a4a4a),
+                fillStyle: 'hachure',
+                roughness: 2.5,
+                strokeWidth: 3,
+                stroke: hexToRgb(0x2a2a2a),
+                hachureAngle: isTop ? 45 : -45,
+                fillWeight: 3
+            });
+
+            // Add some rocky details
+            for (let i = 0; i < 8; i++) {
+                const x = i * 100 + 50;
+                const y = isTop ? (40 + Math.random() * 15) : (30 + Math.random() * 15);
+                wallRc.circle(x, y, 5 + Math.random() * 10, {
+                    fill: hexToRgb(0x3a3a3a),
+                    fillStyle: 'solid',
+                    roughness: 3.0
+                });
+            }
+
+            return wallCanvas.canvas;
+        }
+
         function create() {
-            // Create cave walls (top and bottom) for tunnel effect
-            caveWalls = this.physics.add.staticGroup();
+            // Create cave walls (top and bottom) for tunnel effect with scrolling
+            caveWalls = this.physics.add.group();
 
-            // Top cave wall
-            const topWallCanvas = createRoughCanvas(800, 70);
-            const topWallRc = topWallCanvas.rc;
+            // Create multiple segments for scrolling effect
+            for (let i = 0; i < 3; i++) {
+                // Top wall segment
+                const topTextureName = `topWall_${i}`;
+                this.textures.addCanvas(topTextureName, createWallTexture(true));
+                const topWall = this.add.image(i * 800 + 400, 35, topTextureName);
+                topWall.setOrigin(0.5, 0.5);
+                this.physics.add.existing(topWall);
+                topWall.body.setSize(800, 70);
+                topWall.body.setAllowGravity(false);
+                topWall.body.setImmovable(true);
+                topWallSegments.push(topWall);
+                caveWalls.add(topWall);
 
-            // Draw irregular rocky cave ceiling
-            const topWallPoints = [];
-            for (let x = 0; x <= 800; x += 40) {
-                const y = 50 + Math.random() * 20;
-                topWallPoints.push([x, y]);
+                // Bottom wall segment
+                const bottomTextureName = `bottomWall_${i}`;
+                this.textures.addCanvas(bottomTextureName, createWallTexture(false));
+                const bottomWall = this.add.image(i * 800 + 400, 565, bottomTextureName);
+                bottomWall.setOrigin(0.5, 0.5);
+                this.physics.add.existing(bottomWall);
+                bottomWall.body.setSize(800, 70);
+                bottomWall.body.setAllowGravity(false);
+                bottomWall.body.setImmovable(true);
+                bottomWallSegments.push(bottomWall);
+                caveWalls.add(bottomWall);
             }
-            topWallPoints.unshift([0, 0]);
-            topWallPoints.push([800, 0]);
-
-            topWallRc.polygon(topWallPoints, {
-                fill: hexToRgb(0x4a4a4a),
-                fillStyle: 'hachure',
-                roughness: 2.5,
-                strokeWidth: 3,
-                stroke: hexToRgb(0x2a2a2a),
-                hachureAngle: 45,
-                fillWeight: 3
-            });
-
-            // Add some rocky details
-            for (let i = 0; i < 8; i++) {
-                const x = i * 100 + 50;
-                const y = 40 + Math.random() * 15;
-                topWallRc.circle(x, y, 5 + Math.random() * 10, {
-                    fill: hexToRgb(0x3a3a3a),
-                    fillStyle: 'solid',
-                    roughness: 3.0
-                });
-            }
-
-            this.textures.addCanvas('topCaveWall', topWallCanvas.canvas);
-            const topWall = this.add.image(400, 35, 'topCaveWall');
-            topWall.setOrigin(0.5, 0.5);
-            caveWalls.add(topWall);
-            topWall.body.setSize(800, 70);
-
-            // Bottom cave wall
-            const bottomWallCanvas = createRoughCanvas(800, 70);
-            const bottomWallRc = bottomWallCanvas.rc;
-
-            // Draw irregular rocky cave floor
-            const bottomWallPoints = [];
-            for (let x = 0; x <= 800; x += 40) {
-                const y = 20 + Math.random() * 20;
-                bottomWallPoints.push([x, y]);
-            }
-            bottomWallPoints.push([800, 70]);
-            bottomWallPoints.unshift([0, 70]);
-
-            bottomWallRc.polygon(bottomWallPoints, {
-                fill: hexToRgb(0x4a4a4a),
-                fillStyle: 'hachure',
-                roughness: 2.5,
-                strokeWidth: 3,
-                stroke: hexToRgb(0x2a2a2a),
-                hachureAngle: -45,
-                fillWeight: 3
-            });
-
-            // Add some rocky details
-            for (let i = 0; i < 8; i++) {
-                const x = i * 100 + 50;
-                const y = 30 + Math.random() * 15;
-                bottomWallRc.circle(x, y, 5 + Math.random() * 10, {
-                    fill: hexToRgb(0x3a3a3a),
-                    fillStyle: 'solid',
-                    roughness: 3.0
-                });
-            }
-
-            this.textures.addCanvas('bottomCaveWall', bottomWallCanvas.canvas);
-            const bottomWall = this.add.image(400, 565, 'bottomCaveWall');
-            bottomWall.setOrigin(0.5, 0.5);
-            caveWalls.add(bottomWall);
-            bottomWall.body.setSize(800, 70);
 
             // Create dragon container
             dragon = this.add.container(150, 300);
@@ -620,33 +612,33 @@
                 rightWing.y = 5 - Math.sin(time / 200) * 3;
             }
 
-            // Check if dragon has fallen out of bounds
-            if (dragon.y < 50 || dragon.y > 550) {
-                // Dragon is outside playable area
-                if (!caveWallHitCooldown) {
-                    caveWallHitCooldown = true;
-                    health--;
-                    updateHealth();
-                    this.cameras.main.flash(200, 255, 0, 0);
-                    this.cameras.main.shake(200, 0.01);
-
-                    this.time.delayedCall(500, () => {
-                        caveWallHitCooldown = false;
-                    });
-
-                    if (health <= 0) {
-                        endGame(this);
-                    }
+            // Scroll cave walls for tunnel effect
+            topWallSegments.forEach(wall => {
+                wall.x -= speed * 0.016;
+                // When wall goes off left side, move it to the right side
+                if (wall.x < -400) {
+                    wall.x += 800 * 3; // Move to end of the 3 segments
                 }
-            }
+            });
+
+            bottomWallSegments.forEach(wall => {
+                wall.x -= speed * 0.016;
+                // When wall goes off left side, move it to the right side
+                if (wall.x < -400) {
+                    wall.x += 800 * 3; // Move to end of the 3 segments
+                }
+            });
 
             // Move obstacles and collectibles
             obstacles.children.entries.forEach(obstacle => {
                 obstacle.x -= speed * 0.016;
                 if (obstacle.x < -50) {
                     obstacle.destroy();
-                    // Only award points if dragon is in valid position
-                    if (dragon.y >= 50 && dragon.y <= 550) {
+                    // Only award points if dragon is in valid position (accounting for hitbox)
+                    // Dragon hitbox is 60px tall (±30 from center), walls end at 70 (top) and start at 530 (bottom)
+                    const dragonTop = dragon.y - 30;
+                    const dragonBottom = dragon.y + 30;
+                    if (dragonTop > 70 && dragonBottom < 530) {
                         score += 10;
                         updateScore();
                     }
