@@ -144,7 +144,7 @@
 
         function create() {
             // Create cave walls (top and bottom) for tunnel effect with scrolling
-            caveWalls = this.physics.add.group();
+            caveWalls = this.add.group();
 
             // Create multiple segments for scrolling effect
             for (let i = 0; i < 3; i++) {
@@ -154,9 +154,10 @@
                 const topWall = this.add.image(i * 800 + 400, 35, topTextureName);
                 topWall.setOrigin(0.5, 0.5);
                 this.physics.add.existing(topWall);
-                topWall.body.setSize(800, 70);
                 topWall.body.setAllowGravity(false);
                 topWall.body.setImmovable(true);
+                topWall.body.setSize(800, 70);
+                topWall.body.moves = false;
                 topWallSegments.push(topWall);
                 caveWalls.add(topWall);
 
@@ -166,9 +167,10 @@
                 const bottomWall = this.add.image(i * 800 + 400, 565, bottomTextureName);
                 bottomWall.setOrigin(0.5, 0.5);
                 this.physics.add.existing(bottomWall);
-                bottomWall.body.setSize(800, 70);
                 bottomWall.body.setAllowGravity(false);
                 bottomWall.body.setImmovable(true);
+                bottomWall.body.setSize(800, 70);
+                bottomWall.body.moves = false;
                 bottomWallSegments.push(bottomWall);
                 caveWalls.add(bottomWall);
             }
