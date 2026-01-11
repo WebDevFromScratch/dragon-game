@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dragon Flight Adventure</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.2/bundled/rough.js"></script>
     <style>
         body {
             margin: 0;
@@ -66,123 +67,258 @@
         let obstacleTimer;
         let collectibleTimer;
         let speed = 200;
+        let roughCanvas;
+        let rc;
+
+        // Helper function to create a canvas with Rough.js drawing
+        function createRoughCanvas(width, height) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            return {
+                canvas: canvas,
+                rc: rough.canvas(canvas)
+            };
+        }
+
+        // Helper to convert hex color to RGB string
+        function hexToRgb(hex) {
+            const r = (hex >> 16) & 255;
+            const g = (hex >> 8) & 255;
+            const b = hex & 255;
+            return `rgb(${r}, ${g}, ${b})`;
+        }
 
         function preload() {
-            // We'll create the dragon using graphics in the create function
+            // We'll create the dragon using Rough.js in the create function
         }
 
         function create() {
             // Create dragon container
             dragon = this.add.container(150, 300);
 
-            // Create dragon body (detailed SVG-style)
-            dragonBody = this.add.graphics();
+            // Create dragon body with Rough.js (hand-drawn style)
+            const bodyCanvas = createRoughCanvas(150, 80);
+            const bodyRc = bodyCanvas.rc;
 
-            // Main body - gradient effect with multiple circles
-            dragonBody.fillStyle(0x2d8a4d, 1);
-            dragonBody.fillEllipse(0, 0, 50, 35);
+            // Main body - sketchy ellipse
+            bodyRc.ellipse(75, 40, 50, 35, {
+                fill: hexToRgb(0x2d8a4d),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e)
+            });
 
             // Belly highlight
-            dragonBody.fillStyle(0x90EE90, 1);
-            dragonBody.fillEllipse(0, 5, 35, 20);
+            bodyRc.ellipse(75, 45, 35, 20, {
+                fill: hexToRgb(0x90EE90),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 1,
+                stroke: hexToRgb(0x70d070)
+            });
 
             // Head
-            dragonBody.fillStyle(0x2d8a4d, 1);
-            dragonBody.fillEllipse(30, -8, 35, 30);
+            bodyRc.ellipse(105, 32, 35, 30, {
+                fill: hexToRgb(0x2d8a4d),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e)
+            });
 
             // Snout
-            dragonBody.fillStyle(0x90EE90, 1);
-            dragonBody.fillEllipse(45, -5, 20, 15);
+            bodyRc.ellipse(120, 35, 20, 15, {
+                fill: hexToRgb(0x90EE90),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x70d070)
+            });
 
             // Nostrils
-            dragonBody.fillStyle(0x1a5c2e, 1);
-            dragonBody.fillCircle(50, -8, 2);
-            dragonBody.fillCircle(50, -2, 2);
+            bodyRc.circle(125, 32, 3, {
+                fill: hexToRgb(0x1a5c2e),
+                fillStyle: 'solid',
+                roughness: 1.2
+            });
+            bodyRc.circle(125, 38, 3, {
+                fill: hexToRgb(0x1a5c2e),
+                fillStyle: 'solid',
+                roughness: 1.2
+            });
 
             // Eye
-            dragonBody.fillStyle(0xFFFFFF, 1);
-            dragonBody.fillCircle(35, -12, 6);
-            dragonBody.fillStyle(0x000000, 1);
-            dragonBody.fillCircle(37, -12, 3);
+            bodyRc.circle(110, 28, 6, {
+                fill: 'rgb(255, 255, 255)',
+                fillStyle: 'solid',
+                roughness: 1.0,
+                strokeWidth: 2,
+                stroke: 'rgb(0, 0, 0)'
+            });
+            bodyRc.circle(112, 28, 3, {
+                fill: 'rgb(0, 0, 0)',
+                fillStyle: 'solid',
+                roughness: 0.8
+            });
 
             // Eye shine
-            dragonBody.fillStyle(0xFFFFFF, 1);
-            dragonBody.fillCircle(38, -13, 1.5);
+            bodyRc.circle(113, 27, 1.5, {
+                fill: 'rgb(255, 255, 255)',
+                fillStyle: 'solid',
+                roughness: 0.5
+            });
 
             // Horns
-            dragonBody.fillStyle(0xffd700, 1);
-            dragonBody.fillTriangle(28, -20, 25, -28, 22, -20);
-            dragonBody.fillTriangle(35, -22, 33, -30, 31, -22);
+            bodyRc.polygon([[103, 20], [100, 12], [97, 20]], {
+                fill: hexToRgb(0xffd700),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0xdaa520)
+            });
+            bodyRc.polygon([[110, 18], [108, 10], [106, 18]], {
+                fill: hexToRgb(0xffd700),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0xdaa520)
+            });
 
             // Spikes along back
-            dragonBody.fillStyle(0xffd700, 1);
             for (let i = 0; i < 4; i++) {
-                const x = 10 - i * 8;
-                dragonBody.fillTriangle(x, -15, x-3, -22, x-6, -15);
+                const x = 85 - i * 8;
+                bodyRc.polygon([[x, 25], [x-3, 18], [x-6, 25]], {
+                    fill: hexToRgb(0xffd700),
+                    fillStyle: 'solid',
+                    roughness: 1.5,
+                    strokeWidth: 1.5,
+                    stroke: hexToRgb(0xdaa520)
+                });
             }
 
             // Tail
-            dragonBody.fillStyle(0x2d8a4d, 1);
-            dragonBody.fillEllipse(-25, 0, 25, 15);
-            dragonBody.fillEllipse(-40, -3, 20, 12);
-            dragonBody.fillTriangle(-45, -3, -55, -8, -55, 2);
+            bodyRc.ellipse(50, 40, 25, 15, {
+                fill: hexToRgb(0x2d8a4d),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e)
+            });
+            bodyRc.ellipse(35, 37, 20, 12, {
+                fill: hexToRgb(0x2d8a4d),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e)
+            });
+            bodyRc.polygon([[30, 37], [20, 32], [20, 42]], {
+                fill: hexToRgb(0x2d8a4d),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e)
+            });
 
             // Tail tip decoration
-            dragonBody.fillStyle(0xff4444, 1);
-            dragonBody.fillTriangle(-52, -8, -58, -10, -58, -6);
-            dragonBody.fillTriangle(-52, 2, -58, 0, -58, 4);
+            bodyRc.polygon([[23, 32], [17, 30], [17, 34]], {
+                fill: hexToRgb(0xff4444),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 1.5,
+                stroke: hexToRgb(0xcc0000)
+            });
+            bodyRc.polygon([[23, 42], [17, 40], [17, 44]], {
+                fill: hexToRgb(0xff4444),
+                fillStyle: 'solid',
+                roughness: 1.5,
+                strokeWidth: 1.5,
+                stroke: hexToRgb(0xcc0000)
+            });
 
-            // Left wing
-            leftWing = this.add.graphics();
-            leftWing.fillStyle(0x228b44, 0.8);
-            leftWing.beginPath();
-            leftWing.moveTo(0, 0);
-            leftWing.lineTo(-15, -25);
-            leftWing.lineTo(-35, -35);
-            leftWing.lineTo(-45, -30);
-            leftWing.lineTo(-40, -15);
-            leftWing.lineTo(-25, -5);
-            leftWing.closePath();
-            leftWing.fillPath();
+            // Create Phaser image from canvas
+            this.textures.addCanvas('dragonBody', bodyCanvas.canvas);
+            dragonBody = this.add.image(0, 0, 'dragonBody');
+            dragonBody.setOrigin(0.5, 0.5);
+
+            // Left wing with Rough.js
+            const leftWingCanvas = createRoughCanvas(60, 50);
+            const leftWingRc = leftWingCanvas.rc;
+
+            // Wing shape
+            leftWingRc.polygon([
+                [15, 15],
+                [0, -10],
+                [-20, -20],
+                [-30, -15],
+                [-25, 0],
+                [-10, 10]
+            ], {
+                fill: hexToRgb(0x228b44),
+                fillStyle: 'solid',
+                roughness: 2.0,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e),
+                fillWeight: 3
+            });
 
             // Wing membrane lines
-            leftWing.lineStyle(2, 0x1a5c2e, 0.6);
-            leftWing.beginPath();
-            leftWing.moveTo(-5, -5);
-            leftWing.lineTo(-20, -30);
-            leftWing.stroke();
-            leftWing.beginPath();
-            leftWing.moveTo(-15, -8);
-            leftWing.lineTo(-30, -32);
-            leftWing.stroke();
+            leftWingRc.line(10, 10, -5, -15, {
+                stroke: hexToRgb(0x1a5c2e),
+                strokeWidth: 2,
+                roughness: 2.0
+            });
+            leftWingRc.line(0, 7, -15, -17, {
+                stroke: hexToRgb(0x1a5c2e),
+                strokeWidth: 2,
+                roughness: 2.0
+            });
 
+            this.textures.addCanvas('leftWing', leftWingCanvas.canvas);
+            leftWing = this.add.image(0, 0, 'leftWing');
+            leftWing.setOrigin(0.5, 0.5);
+            leftWing.setAlpha(0.9);
             leftWing.x = -5;
             leftWing.y = -5;
 
-            // Right wing
-            rightWing = this.add.graphics();
-            rightWing.fillStyle(0x228b44, 0.8);
-            rightWing.beginPath();
-            rightWing.moveTo(0, 0);
-            rightWing.lineTo(-15, 25);
-            rightWing.lineTo(-35, 35);
-            rightWing.lineTo(-45, 30);
-            rightWing.lineTo(-40, 15);
-            rightWing.lineTo(-25, 5);
-            rightWing.closePath();
-            rightWing.fillPath();
+            // Right wing with Rough.js
+            const rightWingCanvas = createRoughCanvas(60, 50);
+            const rightWingRc = rightWingCanvas.rc;
+
+            // Wing shape
+            rightWingRc.polygon([
+                [15, 35],
+                [0, 60],
+                [-20, 70],
+                [-30, 65],
+                [-25, 50],
+                [-10, 40]
+            ], {
+                fill: hexToRgb(0x228b44),
+                fillStyle: 'solid',
+                roughness: 2.0,
+                strokeWidth: 2,
+                stroke: hexToRgb(0x1a5c2e),
+                fillWeight: 3
+            });
 
             // Wing membrane lines
-            rightWing.lineStyle(2, 0x1a5c2e, 0.6);
-            rightWing.beginPath();
-            rightWing.moveTo(-5, 5);
-            rightWing.lineTo(-20, 30);
-            rightWing.stroke();
-            rightWing.beginPath();
-            rightWing.moveTo(-15, 8);
-            rightWing.lineTo(-30, 32);
-            rightWing.stroke();
+            rightWingRc.line(10, 40, -5, 65, {
+                stroke: hexToRgb(0x1a5c2e),
+                strokeWidth: 2,
+                roughness: 2.0
+            });
+            rightWingRc.line(0, 43, -15, 67, {
+                stroke: hexToRgb(0x1a5c2e),
+                strokeWidth: 2,
+                roughness: 2.0
+            });
 
+            this.textures.addCanvas('rightWing', rightWingCanvas.canvas);
+            rightWing = this.add.image(0, 0, 'rightWing');
+            rightWing.setOrigin(0.5, 0.5);
+            rightWing.setAlpha(0.9);
             rightWing.x = -5;
             rightWing.y = 5;
 
@@ -407,29 +543,66 @@
         function spawnObstacle() {
             if (gameOver) return;
 
-            const obstacle = this.add.graphics();
             const type = Phaser.Math.Between(0, 1);
             const yPos = Phaser.Math.Between(100, 500);
 
+            const obstacleCanvas = createRoughCanvas(50, 100);
+            const obstacleRc = obstacleCanvas.rc;
+
             if (type === 0) {
-                // Rock obstacle with more detail
-                obstacle.fillStyle(0x8B4513, 1);
-                obstacle.fillRect(0, 0, 40, 80);
-                obstacle.fillStyle(0x654321, 1);
-                obstacle.fillTriangle(0, 0, 20, -30, 40, 0);
-                obstacle.fillStyle(0x5a3a1a, 1);
-                obstacle.fillCircle(10, 20, 5);
-                obstacle.fillCircle(25, 50, 6);
+                // Rock obstacle with sketchy detail
+                obstacleRc.rectangle(5, 20, 40, 80, {
+                    fill: hexToRgb(0x8B4513),
+                    fillStyle: 'solid',
+                    roughness: 2.5,
+                    strokeWidth: 2,
+                    stroke: hexToRgb(0x654321),
+                    fillWeight: 2
+                });
+
+                obstacleRc.polygon([[5, 20], [25, -10], [45, 20]], {
+                    fill: hexToRgb(0x654321),
+                    fillStyle: 'hachure',
+                    roughness: 2.5,
+                    strokeWidth: 2,
+                    stroke: hexToRgb(0x5a3a1a),
+                    hachureAngle: 60
+                });
+
+                // Texture spots
+                obstacleRc.circle(15, 40, 5, {
+                    fill: hexToRgb(0x5a3a1a),
+                    fillStyle: 'solid',
+                    roughness: 2.0
+                });
+                obstacleRc.circle(30, 70, 6, {
+                    fill: hexToRgb(0x5a3a1a),
+                    fillStyle: 'solid',
+                    roughness: 2.0
+                });
             } else {
-                // Stalactite/stalagmite with texture
-                obstacle.fillStyle(0x696969, 1);
-                obstacle.fillTriangle(0, 0, 20, 60, 40, 0);
-                obstacle.fillStyle(0x505050, 1);
-                obstacle.fillTriangle(8, 10, 20, 50, 32, 10);
+                // Stalactite/stalagmite with sketchy texture
+                obstacleRc.polygon([[5, 20], [25, 80], [45, 20]], {
+                    fill: hexToRgb(0x696969),
+                    fillStyle: 'solid',
+                    roughness: 2.5,
+                    strokeWidth: 2.5,
+                    stroke: hexToRgb(0x505050),
+                    fillWeight: 2
+                });
+
+                obstacleRc.polygon([[13, 30], [25, 70], [37, 30]], {
+                    fill: hexToRgb(0x505050),
+                    fillStyle: 'hachure',
+                    roughness: 2.0,
+                    hachureAngle: -60
+                });
             }
 
-            obstacle.x = 850;
-            obstacle.y = yPos;
+            const textureName = `obstacle_${Date.now()}_${Math.random()}`;
+            this.textures.addCanvas(textureName, obstacleCanvas.canvas);
+            const obstacle = this.add.image(850, yPos, textureName);
+            obstacle.setOrigin(0.5, 0.5);
 
             this.physics.add.existing(obstacle);
             obstacle.body.setSize(40, 60);
@@ -443,31 +616,41 @@
         function spawnCollectible() {
             if (gameOver) return;
 
-            const collectible = this.add.graphics();
             const yPos = Phaser.Math.Between(100, 500);
 
-            // Draw a star manually
-            collectible.fillStyle(0xFFD700, 1);
-            collectible.beginPath();
+            const starCanvas = createRoughCanvas(50, 50);
+            const starRc = starCanvas.rc;
+
+            // Draw a sketchy star
+            const starPoints = [];
             for (let i = 0; i < 5; i++) {
                 const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-                const x = Math.cos(angle) * 15;
-                const y = Math.sin(angle) * 15;
-                if (i === 0) {
-                    collectible.moveTo(x, y);
-                } else {
-                    collectible.lineTo(x, y);
-                }
+                const x = 25 + Math.cos(angle) * 15;
+                const y = 25 + Math.sin(angle) * 15;
+                starPoints.push([x, y]);
             }
-            collectible.closePath();
-            collectible.fillPath();
 
-            // Add glow effect
-            collectible.lineStyle(3, 0xFFFF00, 0.5);
-            collectible.strokeCircle(0, 0, 18);
+            starRc.polygon(starPoints, {
+                fill: hexToRgb(0xFFD700),
+                fillStyle: 'solid',
+                roughness: 1.8,
+                strokeWidth: 2.5,
+                stroke: hexToRgb(0xdaa520),
+                fillWeight: 2
+            });
 
-            collectible.x = 850;
-            collectible.y = yPos;
+            // Add sketchy glow effect
+            starRc.circle(25, 25, 18, {
+                stroke: hexToRgb(0xFFFF00),
+                strokeWidth: 3,
+                roughness: 1.5,
+                fill: 'none'
+            });
+
+            const textureName = `star_${Date.now()}_${Math.random()}`;
+            this.textures.addCanvas(textureName, starCanvas.canvas);
+            const collectible = this.add.image(850, yPos, textureName);
+            collectible.setOrigin(0.5, 0.5);
 
             this.physics.add.existing(collectible);
             collectible.body.setCircle(15);
@@ -552,14 +735,10 @@
 
             scene.physics.pause();
 
-            // Change dragon to defeated colors
-            dragonBody.clear();
-            dragonBody.fillStyle(0x8B0000, 1);
-            dragonBody.fillEllipse(0, 0, 50, 35);
-            dragonBody.fillStyle(0xFF6B6B, 1);
-            dragonBody.fillEllipse(0, 5, 35, 20);
-            dragonBody.fillStyle(0x8B0000, 1);
-            dragonBody.fillEllipse(30, -8, 35, 30);
+            // Change dragon to defeated colors - red tint
+            dragonBody.setTint(0x8B0000);
+            leftWing.setTint(0x8B0000);
+            rightWing.setTint(0x8B0000);
 
             const gameOverText = scene.add.text(400, 250, 'GAME OVER!', {
                 fontSize: '64px',
