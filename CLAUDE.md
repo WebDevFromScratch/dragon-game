@@ -17,10 +17,13 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 
 ### Visual Design
 - **Hand-drawn aesthetic using Rough.js library**
-- **Cave tunnel environment:**
+- **Scrolling cave tunnel environment:**
   - Rocky cave walls at top and bottom with irregular edges
+  - Walls scroll horizontally creating sense of forward movement
+  - Each wall segment has unique procedurally-generated texture
   - Hachure-filled textures for depth and hand-drawn feel
   - Creates confined tunnel preventing edge camping
+  - Infinite tunnel effect with seamless segment wrapping
 - Detailed green dragon with sketchy, organic lines:
   - Separate body, wings, head, tail, horns, spikes
   - Animated wings (flap on key press, idle gentle wave motion)
@@ -36,12 +39,16 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 - Single HTML file (Phaser 3.55.2 + Rough.js 4.5.2 from CDN)
 - Dragon is a Phaser Container with Rough.js-generated textures
 - Graphics drawn to offscreen canvas, converted to Phaser textures
-- Physics: Arcade physics with gravity
-- Static cave walls with collision detection (500ms damage cooldown)
+- Physics: Arcade physics with reduced gravity (400) for easier control
+- Scrolling cave walls with 3 segments each (top/bottom) for infinite tunnel
+- Physics-based collision detection with cave walls (500ms damage cooldown)
+- Walls scroll at same speed as obstacles for cohesive movement
+- Obstacles 25% smaller and spawn 25% slower than original
 - Obstacles/collectibles spawn at random Y positions, scroll left
 - Roughness values: 1.5-2.5 for authentic sketchy feel
 - Hachure and solid fill styles for texture variety
 - Camera shake effect on wall impacts
+- Game pauses until player presses SPACE to start
 - No localStorage (not supported in Claude.ai artifacts)
 - All game state in memory
 
