@@ -10,6 +10,7 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 - SPACE or UP ARROW = Flap wings (upward velocity boost)
 - DOWN ARROW = Duck (faster downward movement, wings fold)
 - P = Pause/Resume
+- D = Toggle Debug Mode (shows physics collision boundaries)
 - Gravity constantly pulls dragon down
 - 5 health hearts (lose 1 per obstacle hit, gain 1 per star collected)
 - Score increases as obstacles pass and stars are collected
@@ -38,14 +39,18 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 
 ### Technical Details
 - Single HTML file (Phaser 3.55.2 + Rough.js 4.5.2 from CDN)
-- Dragon: Animated sprite from dragon_sprites.png (6 frames, 100x100px each)
+- Dragon: Animated sprite from dragon_sprites_3.png (4 frames in 2x2 grid, 768x512px each)
+- Dragon physics body: 520x350px in texture space, offset (124, 81) to align with visible dragon
 - Environment graphics drawn to offscreen canvas via Rough.js, converted to textures
 - Physics: Arcade physics with reduced gravity (400) for easier control
 - Scrolling cave walls with 3 segments each (top/bottom) for infinite tunnel
 - Physics-based collision detection with cave walls (500ms damage cooldown)
 - Walls scroll at same speed as obstacles for cohesive movement
 - Obstacles 25% smaller and spawn 25% slower than original
+- Obstacle physics bodies: 30x45px rectangles (smaller than visuals for forgiveness)
+- Star physics bodies: 20px radius circles (aligned with visual star size)
 - Obstacles/collectibles spawn at random Y positions, scroll left
+- Debug mode (D key) reveals all physics collision boundaries in cyan/yellow
 - Roughness values: 1.5-2.5 for authentic sketchy feel
 - Hachure and solid fill styles for texture variety
 - Camera shake effect on wall impacts
@@ -71,5 +76,6 @@ A web-based side-scrolling flight game for a 5-year-old, inspired by Flappy Bird
 
 ## File Structure
 - `dragon-game.html` - Main game file with all HTML, CSS, JavaScript, and game logic
-- `dragon_sprites.png` - Dragon sprite sheet (6 frames for wing animation)
+- `dragon_sprites_3.png` - Dragon sprite sheet (4 frames in 2x2 grid, 768x512px per frame)
+- `dragon_sprites.png` - Original sprite sheet (deprecated, kept for reference)
 - `CLAUDE.md` - This documentation file
