@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(osascript:*)",
+      "Bash(osascript -e 'tell application \"\"Google Chrome\"\" to tell the active tab of its first window to reload')",
+      "Bash(open http://localhost:8080/dragon-game.html)",
+      "Bash(open:*)"
+    ]
+  }
+}

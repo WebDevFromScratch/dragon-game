@@ -30,6 +30,7 @@
             width: 800,
             height: 600,
             parent: 'game-container',
+            backgroundColor: '#0a0a0a', // Very dark background (will be behind our scrolling background)
             physics: {
                 default: 'arcade',
                 arcade: {
@@ -49,6 +50,7 @@
         let dragon;
         let obstacles;
         let collectibles;
+        let fireBoosts;
         let caveWalls;
         let topWallSegments = [];
         let bottomWallSegments = [];
@@ -57,23 +59,31 @@
         let duckKey;
         let pauseKey;
         let debugKey;
+        let fireKey;
         let debugMode = false;
         let isPaused = false;
         let health = 5;
         let score = 0;
         let level = 1;
+        let fireBreaths = 0;
+        let maxFireBreaths = 3;
         let healthText;
         let scoreText;
         let levelText;
+        let fireBreathText;
         let gameOver = false;
         let gameStarted = false;
         let obstacleTimer;
         let collectibleTimer;
+        let fireBoostTimer;
         let speed = 200;
         let roughCanvas;
         let rc;
         let caveWallHitCooldown = false;
         let instructions;
+        let activeFireBreath = null;
+        let backgroundLayer1;
+        let backgroundLayer2;
 
         // Helper function to create a canvas with Rough.js drawing
         function createRoughCanvas(width, height) {
@@ -95,12 +105,30 @@
         }
 
         function preload() {
+            // Load background image for parallax scrolling
+            // If file doesn't exist yet, we'll create a simple gradient background
+            this.load.image('caveBackground', 'cave_background.png');
+            this.load.on('loaderror', (file) => {
+                if (file.key === 'caveBackground') {
+                    console.log('Background image not found, will use gradient');
+                }
+            });
+
             // Load dragon sprite sheet (version 3)
             // 2 columns x 2 rows = 4 frames
             // Each frame is 768x512px
             this.load.spritesheet('dragon', 'dragon_sprites_3.png', {
                 frameWidth: 768,
                 frameHeight: 512,
+                startFrame: 0,
+                endFrame: 3
+            });
+
+            // Load fire breath sprite sheet
+            // 2 columns x 2 rows = 4 frames
+            this.load.spritesheet('fireBreath', 'fire_breath.png', {
+                frameWidth: 663,
+                frameHeight: 444,
                 startFrame: 0,
                 endFrame: 3
             });
@@ -150,6 +178,37 @@
         }
 
         function create() {
+            // Create parallax scrolling background layers
+            if (this.textures.exists('caveBackground')) {
+                // Far background layer (scrolls slowest for depth effect)
+                backgroundLayer1 = this.add.tileSprite(400, 300, 800, 600, 'caveBackground');
+                backgroundLayer1.setAlpha(0.6); // Slightly transparent for depth
+                backgroundLayer1.setDepth(-2);
+
+                // Mid background layer (scrolls medium speed)
+                backgroundLayer2 = this.add.tileSprite(400, 300, 800, 600, 'caveBackground');
+                backgroundLayer2.setAlpha(0.8);
+                backgroundLayer2.setDepth(-1);
+            } else {
+                // Fallback: Create a gradient background using canvas
+                const bgCanvas = document.createElement('canvas');
+                bgCanvas.width = 800;
+                bgCanvas.height = 600;
+                const ctx = bgCanvas.getContext('2d');
+
+                // Create dark cave gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, 600);
+                gradient.addColorStop(0, '#1a1a2e');
+                gradient.addColorStop(0.5, '#16213e');
+                gradient.addColorStop(1, '#0f3460');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 800, 600);
+
+                this.textures.addCanvas('gradientBg', bgCanvas);
+                backgroundLayer1 = this.add.tileSprite(400, 300, 800, 600, 'gradientBg');
+                backgroundLayer1.setDepth(-2);
+            }
+
             // Create cave walls (top and bottom) for tunnel effect with scrolling
             caveWalls = this.add.group();
 
@@ -208,6 +267,14 @@
             // Start with idle animation
             dragon.play('idle');
 
+            // Create fire breath animation
+            this.anims.create({
+                key: 'breatheFire',
+                frames: this.anims.generateFrameNumbers('fireBreath', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+
             // Add physics to dragon sprite
             this.physics.add.existing(dragon);
             // Physics body dimensions are in original texture space (768x512)
@@ -219,6 +286,7 @@
             // Create groups for obstacles and collectibles
             obstacles = this.physics.add.group();
             collectibles = this.physics.add.group();
+            fireBoosts = this.physics.add.group();
 
             // Input
             cursors = this.input.keyboard.createCursorKeys();
@@ -226,6 +294,7 @@
             duckKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
             pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
             debugKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+            fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
             // UI Text
             healthText = this.add.text(16, 16, 'Health: ❤️❤️❤️❤️❤️', {
@@ -249,6 +318,14 @@
                 strokeThickness: 4
             });
 
+            fireBreathText = this.add.text(16, 118, 'Fire: 🔥🔥🔥', {
+                fontSize: '24px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+            updateFireBreathDisplay();
+
             const pauseText = this.add.text(750, 16, 'P = Pause', {
                 fontSize: '20px',
                 fill: '#fff',
@@ -264,6 +341,14 @@
                 strokeThickness: 3
             });
             debugText.setOrigin(1, 0);
+
+            const fireText = this.add.text(750, 72, 'F = Fire Breath', {
+                fontSize: '20px',
+                fill: '#fff',
+                stroke: '#000',
+                strokeThickness: 3
+            });
+            fireText.setOrigin(1, 0);
 
             // Spawn obstacles and collectibles (paused until game starts)
             obstacleTimer = this.time.addEvent({
@@ -282,14 +367,24 @@
                 paused: true
             });
 
+            fireBoostTimer = this.time.addEvent({
+                delay: 8000,
+                callback: spawnFireBoost,
+                callbackScope: this,
+                loop: true,
+                paused: true
+            });
+
             // Collisions
             this.physics.add.overlap(dragon, obstacles, hitObstacle, null, this);
             this.physics.add.overlap(dragon, collectibles, collectItem, null, this);
-            this.physics.add.overlap(dragon, caveWalls, hitCaveWall, null, this);
+            this.physics.add.overlap(dragon, fireBoosts, collectFireBoost, null, this);
+            // Use collider for cave walls to physically block the dragon from passing through
+            this.physics.add.collider(dragon, caveWalls, hitCaveWall, null, this);
 
             // Instructions (stays until game starts)
             instructions = this.add.text(400, 300,
-                'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\n\nFly through the cave!\nAvoid walls and obstacles! Collect stars!\n\nPress SPACE to start!',
+                'SPACE or UP = Flap Wings (Go Higher)\nDOWN = Duck (Go Lower)\nF = Breathe Fire\n\nFly through the cave!\nAvoid walls and obstacles! Collect stars and fire!\n\nPress SPACE to start!',
                 {
                     fontSize: '20px',
                     fill: '#fff',
@@ -312,6 +407,7 @@
                     this.physics.resume();
                     obstacleTimer.paused = false;
                     collectibleTimer.paused = false;
+                    fireBoostTimer.paused = false;
                     if (instructions) {
                         instructions.destroy();
                         instructions = null;
@@ -346,6 +442,7 @@
                     this.physics.pause();
                     obstacleTimer.paused = true;
                     collectibleTimer.paused = true;
+                    fireBoostTimer.paused = true;
 
                     const pauseMsg = this.add.text(400, 300, 'PAUSED\nPress P to resume', {
                         fontSize: '48px',
@@ -360,6 +457,7 @@
                     this.physics.resume();
                     obstacleTimer.paused = false;
                     collectibleTimer.paused = false;
+                    fireBoostTimer.paused = false;
 
                     const pauseMsg = this.children.getByName('pauseMessage');
                     if (pauseMsg) pauseMsg.destroy();
@@ -413,6 +511,25 @@
                 }
             }
 
+            // Fire breathing
+            if (Phaser.Input.Keyboard.JustDown(fireKey) && fireBreaths > 0 && !activeFireBreath) {
+                breatheFire(this);
+            }
+
+            // Update fire breath position to follow dragon
+            if (activeFireBreath) {
+                activeFireBreath.x = dragon.x + 10;
+                activeFireBreath.y = dragon.y;
+            }
+
+            // Scroll background layers for parallax effect
+            if (backgroundLayer1) {
+                backgroundLayer1.tilePositionX += speed * 0.016 * 0.3; // Scrolls at 30% speed (far background)
+            }
+            if (backgroundLayer2) {
+                backgroundLayer2.tilePositionX += speed * 0.016 * 0.6; // Scrolls at 60% speed (mid background)
+            }
+
             // Scroll cave walls for tunnel effect
             topWallSegments.forEach(wall => {
                 wall.x -= speed * 0.016;
@@ -450,6 +567,13 @@
                 collectible.x -= speed * 0.016;
                 if (collectible.x < -50) {
                     collectible.destroy();
+                }
+            });
+
+            fireBoosts.children.entries.forEach(fireBoost => {
+                fireBoost.x -= speed * 0.016;
+                if (fireBoost.x < -50) {
+                    fireBoost.destroy();
                 }
             });
 
@@ -636,6 +760,127 @@
 
             // Flash green
             this.cameras.main.flash(200, 0, 255, 0);
+        }
+
+        function spawnFireBoost() {
+            if (gameOver) return;
+
+            const yPos = Phaser.Math.Between(100, 500);
+
+            const fireCanvas = createRoughCanvas(50, 50);
+            const fireRc = fireCanvas.rc;
+
+            // Draw a sketchy flame
+            // Bottom of flame (wider)
+            fireRc.polygon([[25, 45], [15, 35], [10, 25], [15, 15], [25, 5], [35, 15], [40, 25], [35, 35]], {
+                fill: hexToRgb(0xFF4500),
+                fillStyle: 'solid',
+                roughness: 2.5,
+                strokeWidth: 2.5,
+                stroke: hexToRgb(0xFF8C00),
+                fillWeight: 2
+            });
+
+            // Inner flame (yellow/bright)
+            fireRc.polygon([[25, 35], [20, 28], [18, 20], [25, 10], [32, 20], [30, 28]], {
+                fill: hexToRgb(0xFFD700),
+                fillStyle: 'solid',
+                roughness: 2.0,
+                strokeWidth: 2,
+                stroke: hexToRgb(0xFFA500),
+                fillWeight: 2
+            });
+
+            // Add sketchy glow effect
+            fireRc.circle(25, 25, 22, {
+                stroke: hexToRgb(0xFF6347),
+                strokeWidth: 2,
+                roughness: 2.5,
+                fill: 'none'
+            });
+
+            const textureName = `fire_${Date.now()}_${Math.random()}`;
+            this.textures.addCanvas(textureName, fireCanvas.canvas);
+            const fireBoost = this.add.image(850, yPos, textureName);
+            fireBoost.setOrigin(0.5, 0.5);
+
+            this.physics.add.existing(fireBoost);
+            fireBoost.body.setCircle(20);
+            fireBoost.body.setAllowGravity(false);
+            fireBoost.body.moves = false;
+
+            fireBoosts.add(fireBoost);
+
+            // Flicker animation
+            this.tweens.add({
+                targets: fireBoost,
+                alpha: 0.7,
+                scaleX: 1.2,
+                scaleY: 1.2,
+                duration: 300,
+                yoyo: true,
+                repeat: -1
+            });
+        }
+
+        function collectFireBoost(dragon, fireBoost) {
+            fireBoost.destroy();
+            fireBreaths = maxFireBreaths; // Always set to max (3)
+            score += 30;
+            updateFireBreathDisplay();
+            updateScore();
+
+            // Flash orange
+            this.cameras.main.flash(200, 255, 165, 0);
+        }
+
+        function breatheFire(scene) {
+            // Reduce fire breath count
+            fireBreaths--;
+            updateFireBreathDisplay();
+
+            // Position fire breath right at dragon's front (using sprite animation)
+            const fireBreath = scene.add.sprite(dragon.x + 40, dragon.y, 'fireBreath', 0);
+            fireBreath.setOrigin(0, 0.5);
+            fireBreath.setScale(0.15); // Scale from 663x444 to ~100x67px
+
+            // Play fire breath animation
+            fireBreath.play('breatheFire');
+
+            // Add physics
+            scene.physics.add.existing(fireBreath);
+            fireBreath.body.setSize(500, 300); // Physics body in texture space
+            fireBreath.body.setAllowGravity(false);
+            fireBreath.body.setImmovable(true);
+
+            activeFireBreath = fireBreath;
+
+            // Add collision with obstacles
+            scene.physics.add.overlap(fireBreath, obstacles, burnObstacle, null, scene);
+
+            // Remove fire breath after 1.5 seconds
+            scene.time.delayedCall(1500, () => {
+                if (fireBreath) {
+                    fireBreath.destroy();
+                }
+                activeFireBreath = null;
+            });
+        }
+
+        function burnObstacle(fireBreath, obstacle) {
+            // Destroy the obstacle
+            obstacle.destroy();
+            score += 5;
+            updateScore();
+
+            // Flash yellow
+            this.cameras.main.flash(100, 255, 255, 0);
+        }
+
+        function updateFireBreathDisplay() {
+            const fires = '🔥'.repeat(fireBreaths);
+            const emptyFires = '⚫'.repeat(maxFireBreaths - fireBreaths);
+            fireBreathText.setText('Fire: ' + fires + emptyFires);
         }
 
         function updateHealth() {
